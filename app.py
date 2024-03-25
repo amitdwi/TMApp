@@ -5,7 +5,7 @@ from slack_bolt import App
 # Initialize your app with your bot token and signing secret
 app = App(
     token=os.environ.get("SLACK_BOT_TOKEN"),
-    signing_secret=os.environ.get("SLACK_SIGNING_SECRET")
+    signing_secret=os.environ.get("SLACK_APP_TOKEN")
 )
 
 # New functionality
@@ -26,40 +26,13 @@ def update_home_tab(client, event, logger):
           {
             "type": "header",
             "text": {
-              "type": "mrkdwn",
-              "text": "*Welcome to your _App's Home tab_* :tada:"
+              "type": "plain_text",
+              "text": "Task Management App Home",
+              "emoji": True
             }
           },
           {
             "type": "divider"
-          },
-          {
-            "type": "section",
-            "text": {
-              "type": "mrkdwn",
-              "text": "*Today, 22 October*"
-            },
-            "accessory": {
-              "type": "button",
-              "text": {
-                "type": "plain_text",
-                "text": "Manage App Settings"
-              },
-              "value": "settings"
-            }
-          },
-          {
-            "type": "actions",
-            "elements": [
-              {
-                "type": "datepicker",
-                "initial_date": "2019-10-22",
-                "placeholder": {
-                  "type": "plain_text",
-                  "text": "Select a date"
-                }
-              }
-            ]
           },
           {
             "type": "actions",
@@ -68,10 +41,32 @@ def update_home_tab(client, event, logger):
                 "type": "button",
                 "text": {
                   "type": "plain_text",
-                  "text": "Open Modal"
-                }
+                  "text": "Open tasks"
+                },
+                "style": "primary",
+                "value": "open_tasks"
+              },
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Completed tasks"
+                },
+                "style": "danger",
+                "value": "completed_tasks"
+              },
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Create a task"
+                },
+                "value": "create_a_task"
               }
             ]
+          },
+          {
+            "type": "divider"
           }
         ]
       }
