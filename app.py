@@ -52,7 +52,6 @@ def update_home_tab(client, event, logger):
                   "type": "plain_text",
                   "text": "Completed tasks"
                 },
-                "style": "danger",
                 "value": "completed_tasks"
               },
               {
@@ -67,6 +66,52 @@ def update_home_tab(client, event, logger):
           },
           {
             "type": "divider"
+          },
+          {
+            "type": "header",
+            "text": {
+              "type": "plain_text",
+              "text": "You have 3 open tasks",
+              "emoji": True
+            }
+          },
+          {
+            "type": "input",
+            "element": {
+              "type": "checkboxes",
+              "options": [
+                {
+                  "text": {
+                    "type": "plain_text",
+                    "text": "Set up customer meeting",
+                    "emoji": True
+                  },
+                  "value": "value-0"
+                },
+                {
+                  "text": {
+                    "type": "plain_text",
+                    "text": "Test new feature",
+                    "emoji": True
+                  },
+                  "value": "value-1"
+                },
+                {
+                  "text": {
+                    "type": "plain_text",
+                    "text": "Call back",
+                    "emoji": True
+                  },
+                  "value": "value-2"
+                }
+              ],
+              "action_id": "checkboxes-action"
+            },
+            "label": {
+              "type": "plain_text",
+              "text": "To do : ",
+              "emoji": True
+            }
           }
         ]
       }
