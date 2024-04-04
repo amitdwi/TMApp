@@ -6,6 +6,8 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 import requests
 
+import json
+
 # Initialize your app with your bot token and signing secret
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 
@@ -17,6 +19,126 @@ def main():
 @app.event("app_home_opened")
 def update_home_tab(client, event, logger):
   try:
+    # Get the all tasks 
+    response = requests.get('http://127.0.0.1:5000/tasks')
+    if response.status_code == 200:
+      #print(response.json())
+      tasks = response.json()
+      #print(tasks)
+      tasks_block = []
+      for task in tasks:
+        #print(task)
+        tasks_block.append(
+            {
+              "type": "section",
+              "text": {
+                "type": "plain_text",
+                "text": task["description"],
+                "emoji": True
+              }
+            }
+        )
+        tasks_block.append(
+           {
+              "type": "actions",
+              "elements": [
+                {
+                  "type": "button",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "Update",
+                    "emoji": True
+                  },
+                  "style": "primary",
+                  "value": "action_value_123",
+                  "action_id": "actionId-0"
+                },
+                {
+                  "type": "button",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "Delete",
+                    "emoji": True
+                  },
+                  "style": "danger",
+                  "value": task["_id"],
+                  "action_id": "actionId-1"
+                }
+              ]
+            }
+        )
+    else:
+      raise Exception(f"Non-success status code: {response.status_code}")
+    # get_tasks = json.dumps(response)
+    # for task in get_tasks:
+    #   print(response)
+
+    # task_block = {
+    #     "type": "header",
+    #     "text": {
+    #       "type": "plain_text",
+    #       "text": "description",
+    #       "emoji": True
+    #     }
+    #   }
+
+    home_blocks = [
+      {
+        "type": "header",
+        "text": {
+          "type": "plain_text",
+          "text": "Task Management App Home",
+          "emoji": True
+        }
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "actions",
+        "elements": [
+          {
+            "type": "button",
+            "text": {
+              "type": "plain_text",
+              "text": "Open tasks"
+            },
+            "style": "primary",
+            "value": "open_tasks"
+          },
+          {
+            "type": "button",
+            "text": {
+              "type": "plain_text",
+              "text": "Completed tasks"
+            },
+            "value": "completed_tasks"
+          },
+          {
+            "type": "button",
+            "text": {
+              "type": "plain_text",
+              "text": "Create a task"
+            },
+            "value": "create_a_task",
+            "action_id": "create_new_task"
+          }
+        ]
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "header",
+        "text": {
+          "type": "plain_text",
+          "text": "You have 3 open tasks",
+          "emoji": True
+        }
+      }
+    ]
+    home_blocks.extend(tasks_block)
+    #print(home_blocks)
     # views.publish is the method that your app uses to push a view to the Home tab
     client.views_publish(
       # the user that opened your app's app home
@@ -25,101 +147,9 @@ def update_home_tab(client, event, logger):
       view={
         "type": "home",
         "callback_id": "home_view",
-
+        "blocks" : home_blocks
         # body of the view
-        "blocks": [
-          {
-            "type": "header",
-            "text": {
-              "type": "plain_text",
-              "text": "Task Management App Home",
-              "emoji": True
-            }
-          },
-          {
-            "type": "divider"
-          },
-          {
-            "type": "actions",
-            "elements": [
-              {
-                "type": "button",
-                "text": {
-                  "type": "plain_text",
-                  "text": "Open tasks"
-                },
-                "style": "primary",
-                "value": "open_tasks"
-              },
-              {
-                "type": "button",
-                "text": {
-                  "type": "plain_text",
-                  "text": "Completed tasks"
-                },
-                "value": "completed_tasks"
-              },
-              {
-                "type": "button",
-                "text": {
-                  "type": "plain_text",
-                  "text": "Create a task"
-                },
-                "value": "create_a_task",
-                "action_id": "create_new_task"
-              }
-            ]
-          },
-          {
-            "type": "divider"
-          },
-          {
-            "type": "header",
-            "text": {
-              "type": "plain_text",
-              "text": "You have 3 open tasks",
-              "emoji": True
-            }
-          },
-          {
-            "type": "input",
-            "element": {
-              "type": "checkboxes",
-              "options": [
-                {
-                  "text": {
-                    "type": "plain_text",
-                    "text": "Set up customer meeting",
-                    "emoji": True
-                  },
-                  "value": "value-0"
-                },
-                {
-                  "text": {
-                    "type": "plain_text",
-                    "text": "Test new feature",
-                    "emoji": True
-                  },
-                  "value": "value-1"
-                },
-                {
-                  "text": {
-                    "type": "plain_text",
-                    "text": "Call back",
-                    "emoji": True
-                  },
-                  "value": "value-2"
-                }
-              ],
-              "action_id": "checkboxes-action"
-            },
-            "label": {
-              "type": "plain_text",
-              "text": "To do: ",
-              "emoji": True
-            }
-          }
-        ]
+        
       }
     )
 
@@ -234,11 +264,11 @@ def handle_submission(ack, body, context, view, logger, say:Say):
         "description": data["input_task_details"]["input_task_details-action"]["value"],
         "status": "TODO"
     }
-    user = body["user"]["id"]
+    #user = body["user"]["id"]
     request_dat= requests.post('http://127.0.0.1:5000/tasks', json=new_data)
     #print(user)
     #print(data)
-    print(context)
+    #print(context)
     # Validate the inputs
     errors = {}
     if len(errors) > 0:
@@ -247,6 +277,16 @@ def handle_submission(ack, body, context, view, logger, say:Say):
     
     say(channel=context["user_id"], text="Task created successfully")
     logger.info(body)
+
+
+@app.action("actionId-1")
+def delete_task_action(ack, body, logger, payload, say):
+    ack()
+    logger.info(body)
+    #print(payload["value"])
+    requests.delete(f'http://127.0.0.1:5000/tasks/{payload["value"]}')
+
+    say(channel=body["user"]["id"], text="Task deleted successfully")
 
 # Ready? Start your app!
 if __name__ == "__main__":
