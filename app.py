@@ -1,6 +1,6 @@
 import os
 # Use the package we installed
-from slack_bolt import App
+from slack_bolt import App, Say
 
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
@@ -178,114 +178,164 @@ def update_home_tab(client, context, logger):
       tasks_length = len(response.json()[0])
       print(tasks_length)
       #print(tasks)
-      tasks_block = []
-      for task in tasks:
-        #print(task)
-        tasks_block.append(
-            {
-              "type": "section",
-              "text": {
-                "type": "plain_text",
-                "text": task["description"],
-                "emoji": True
-              }
-            }
-        )
-        tasks_block.append(
-           {
-              "type": "actions",
-              "elements": [
-                {
-                  "type": "button",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "Edit",
-                    "emoji": True
-                  },
-                  "value": task["id"],
-                  "action_id": "actionId-0"
-                },
-                {
-                  "type": "button",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "Delete",
-                    "emoji": True
-                  },
-                  "style": "danger",
-                  "value": task["id"],
-                  "action_id": "actionId-1"
+      if(tasks_length):
+        tasks_block = []
+        for task in tasks:
+          #print(task)
+          tasks_block.append(
+              {
+                "type": "section",
+                "text": {
+                  "type": "plain_text",
+                  "text": task["description"],
+                  "emoji": True
                 }
-              ]
+              }
+          )
+          tasks_block.append(
+            {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "Edit",
+                      "emoji": True
+                    },
+                    "value": task["id"],
+                    "action_id": "actionId-0"
+                  },
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "Delete",
+                      "emoji": True
+                    },
+                    "style": "danger",
+                    "value": task["id"],
+                    "action_id": "actionId-1"
+                  }
+                ]
+              }
+          )
+        home_blocks = [
+          {
+            "type": "header",
+            "text": {
+              "type": "plain_text",
+              "text": "Task Management App Home",
+              "emoji": True
             }
-        )
+          },
+          {
+            "type": "divider"
+          },
+          {
+            "type": "actions",
+            "elements": [
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "My Tasks"
+                },
+                "value": "my_tasks"
+              },
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "To Do"
+                },
+                "value": "todo_tasks"
+              },
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "In Progress"
+                },
+                "value": "inprogress_tasks"
+              },
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Completed Tasks"
+                },
+                "value": "completed_tasks"
+              },
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Create Task"
+                },
+                "style": "primary",
+                "value": "create_a_task",
+                "action_id": "create_new_task"
+              }
+            ]
+          },
+          {
+            "type": "divider"
+          }
+        ]
+        home_blocks.extend(tasks_block)
+      else:
+        home_blocks = [
+          {
+            "type": "actions",
+            "elements": [
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Create a task",
+                  "emoji": True
+                },
+                "value": "create_a_task",
+                "action_id": "create_new_task"
+              },
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Create a project",
+                  "emoji": True
+                },
+                "value": "create_a_project",
+                "action_id": "create_project"
+              },
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Join a project",
+                  "emoji": True
+                },
+                "value": "join_a_project",
+                "action_id": "join_project"
+              }
+            ]
+          },
+          {
+            "type": "divider"
+          },
+          {
+            "type": "section",
+            "text": {
+              "type": "plain_text",
+              "text": "You have not created any task yet, Please click on 'Create a task' button and create your first task.",
+              "emoji": True
+            }
+          }
+        ]
     else:
       raise Exception(f"Non-success status code: {response.status_code}")
 
-    home_blocks = [
-      {
-        "type": "header",
-        "text": {
-          "type": "plain_text",
-          "text": "Task Management App Home",
-          "emoji": True
-        }
-      },
-      {
-        "type": "divider"
-      },
-      {
-        "type": "actions",
-        "elements": [
-          {
-            "type": "button",
-            "text": {
-              "type": "plain_text",
-              "text": "My Tasks"
-            },
-            "value": "my_tasks"
-          },
-          {
-            "type": "button",
-            "text": {
-              "type": "plain_text",
-              "text": "To Do"
-            },
-            "value": "todo_tasks"
-          },
-          {
-            "type": "button",
-            "text": {
-              "type": "plain_text",
-              "text": "In Progress"
-            },
-            "value": "inprogress_tasks"
-          },
-          {
-            "type": "button",
-            "text": {
-              "type": "plain_text",
-              "text": "Completed Tasks"
-            },
-            "value": "completed_tasks"
-          },
-          {
-            "type": "button",
-            "text": {
-              "type": "plain_text",
-              "text": "Create Task"
-            },
-            "style": "primary",
-            "value": "create_a_task",
-            "action_id": "create_new_task"
-          }
-        ]
-      },
-      {
-        "type": "divider"
-      }
-    ]
-    home_blocks.extend(tasks_block)
     #print(home_blocks)
     # views.publish is the method that your app uses to push a view to the Home tab
     client.views_publish(
@@ -341,98 +391,98 @@ def show_home_tab_conditionaly(client, context, logger):
 #     except Exception as e:
 #         logger.error("Error creating conversation: {}".format(e))
 
-# @app.action("create_new_task")
-# def create_new_task (ack, logger, body, client):
-#     logger.info(f"request body: {body}")
-#     ack()
-#     try:
-#         # Call the views.open method using the WebClient passed to listeners
-#         result = client.views_open(
-#             trigger_id=body["trigger_id"],
-#             view={
-#               "type": "modal",
-#               "callback_id": "create_task_view",
-#               "title": {
-#                 "type": "plain_text",
-#                 "text": "Create new task",
-#                 "emoji": True
-#               },
-#               "submit": {
-#                 "type": "plain_text",
-#                 "text": "Submit",
-#                 "emoji": True
-#               },
-#               "close": {
-#                 "type": "plain_text",
-#                 "text": "Cancel",
-#                 "emoji": True
-#               },
-#               "blocks": [
-#                 {
-#                   "type": "divider"
-#                 },
-#                 {
-#                   "type": "input",
-#                   "block_id": "input_task_details",
-#                   "element": {
-#                     "type": "plain_text_input",
-#                     "action_id": "input_task_details-action"
-#                   },
-#                   "label": {
-#                     "type": "plain_text",
-#                     "text": "New task",
-#                     "emoji": True
-#                   }
-#                 },
-#                 {
-#                   "type": "input",
-#                   "element": {
-#                     "type": "multi_users_select",
-#                     "placeholder": {
-#                       "type": "plain_text",
-#                       "text": "Select users",
-#                       "emoji": True
-#                     },
-#                     "action_id": "multi_users_select-action"
-#                   },
-#                   "label": {
-#                     "type": "plain_text",
-#                     "text": "Assign user",
-#                     "emoji": True
-#                   }
-#                 }
-#               ]
-#             }
-#         )
-#         logger.info(result)
+@app.action("create_new_task")
+def create_new_task (ack, logger, body, client):
+    logger.info(f"request body: {body}")
+    ack()
+    try:
+        # Call the views.open method using the WebClient passed to listeners
+        result = client.views_open(
+            trigger_id=body["trigger_id"],
+            view={
+              "type": "modal",
+              "callback_id": "create_task_view",
+              "title": {
+                "type": "plain_text",
+                "text": "Create new task",
+                "emoji": True
+              },
+              "submit": {
+                "type": "plain_text",
+                "text": "Submit",
+                "emoji": True
+              },
+              "close": {
+                "type": "plain_text",
+                "text": "Cancel",
+                "emoji": True
+              },
+              "blocks": [
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "input",
+                  "block_id": "input_task_details",
+                  "element": {
+                    "type": "plain_text_input",
+                    "action_id": "input_task_details-action"
+                  },
+                  "label": {
+                    "type": "plain_text",
+                    "text": "New task",
+                    "emoji": True
+                  }
+                },
+                {
+                  "type": "input",
+                  "element": {
+                    "type": "multi_users_select",
+                    "placeholder": {
+                      "type": "plain_text",
+                      "text": "Select users",
+                      "emoji": True
+                    },
+                    "action_id": "multi_users_select-action"
+                  },
+                  "label": {
+                    "type": "plain_text",
+                    "text": "Assign user",
+                    "emoji": True
+                  }
+                }
+              ]
+            }
+        )
+        logger.info(result)
 
-#     except Exception as e:
-#         logger.error("Error creating conversation: {}".format(e))
+    except Exception as e:
+        logger.error("Error creating conversation: {}".format(e))
 
-# # Handle a view_submission request
-# @app.view("create_task_view")
-# def handle_submission(ack, body, context, client, view, logger, say:Say):
-#     ack()
-#     data = view["state"]["values"]
-#     new_data = {
-#         "assignee": body["user"]["id"],
-#         "description": data["input_task_details"]["input_task_details-action"]["value"],
-#         "status": "TODO"
-#     }
-#     #user = body["user"]["id"]
-#     request_dat= requests.post('http://127.0.0.1:5000/tasks', json=new_data)
-#     #print(user)
-#     #print(data)
-#     #print(context)
-#     # Validate the inputs
-#     errors = {}
-#     if len(errors) > 0:
-#         ack(response_action="errors", errors=errors)
-#         return
+# Handle a view_submission request
+@app.view("create_task_view")
+def handle_submission(ack, body, context, client, view, logger, say:Say):
+    ack()
+    data = view["state"]["values"]
+    new_data = {
+        "assignee": body["user"]["id"],
+        "description": data["input_task_details"]["input_task_details-action"]["value"],
+        "status": "TODO"
+    }
+    #user = body["user"]["id"]
+    request_dat= requests.post('http://127.0.0.1:5000/tasks', json=new_data)
+    #print(user)
+    #print(data)
+    #print(context)
+    # Validate the inputs
+    errors = {}
+    if len(errors) > 0:
+        ack(response_action="errors", errors=errors)
+        return
     
-#     say(channel=context["user_id"], text="Task created successfully")
-#     update_home_tab(client, context, logger)
-#     logger.info(body)
+    say(channel=context["user_id"], text="Task created successfully")
+    update_home_tab(client, context, logger)
+    logger.info(body)
 
 
 @app.action("actionId-1")
