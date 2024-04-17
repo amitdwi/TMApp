@@ -1,10 +1,13 @@
 import os
+import random, string
 # Use the package we installed
 from slack_bolt import App, Say
 
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 from auth.mongo import db
+
+from datetime import date
 
 import requests
 
@@ -127,7 +130,7 @@ def open_login_modal(ack, body, logger, context, client):
 
 # Handle a view_submission request
 @app.view("login_view")
-def handle_submission(ack, body, client, context, view, payload):
+def handle_submission(ack, body, client, context, view, payload, logger):
     ack()
     view_data = view["state"]["values"]
     data = {
@@ -153,6 +156,8 @@ def handle_submission(ack, body, client, context, view, payload):
     if len(errors) > 0:
         ack(response_action="errors", errors=errors)
         return
+    
+    update_home_tab(client, context, logger)
 
 
 def check_token(context):
@@ -178,16 +183,16 @@ def update_home_tab(client, context, logger):
       tasks_length = len(response.json()[0])
       print(tasks_length)
       #print(tasks)
-      if(tasks_length):
+      if(tasks_length > 0):
         tasks_block = []
         for task in tasks:
-          #print(task)
+          print(task)
           tasks_block.append(
               {
                 "type": "section",
                 "text": {
                   "type": "plain_text",
-                  "text": task["description"],
+                  "text": task["title"],
                   "emoji": True
                 }
               }
@@ -239,8 +244,57 @@ def update_home_tab(client, context, logger):
                 "type": "button",
                 "text": {
                   "type": "plain_text",
+                  "text": "Create a task",
+                  "emoji": True
+                },
+                "value": "create_a_task",
+                "action_id": "create_new_task"
+              },
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Create a project",
+                  "emoji": True
+                },
+                "value": "create_a_project",
+                "action_id": "create_project"
+              },
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Join a project",
+                  "emoji": True
+                },
+                "value": "join_a_project",
+                "action_id": "join_project"
+              },
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Invite a member",
+                  "emoji": True
+                },
+                "value": "add_a_member",
+                "action_id": "add_member"
+              }
+            ]
+          },
+          {
+            "type": "divider"
+          },
+          {
+            "type": "actions",
+            "elements": [
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
                   "text": "My Tasks"
                 },
+                "style": "primary",
                 "value": "my_tasks"
               },
               {
@@ -266,16 +320,6 @@ def update_home_tab(client, context, logger):
                   "text": "Completed Tasks"
                 },
                 "value": "completed_tasks"
-              },
-              {
-                "type": "button",
-                "text": {
-                  "type": "plain_text",
-                  "text": "Create Task"
-                },
-                "style": "primary",
-                "value": "create_a_task",
-                "action_id": "create_new_task"
               }
             ]
           },
@@ -286,6 +330,17 @@ def update_home_tab(client, context, logger):
         home_blocks.extend(tasks_block)
       else:
         home_blocks = [
+          {
+            "type": "section",
+            "text": {
+              "type": "plain_text",
+              "text": "You have not created any task yet, Please click on 'Create a task' button and create your first task.",
+              "emoji": True
+            }
+          },
+          {
+            "type": "divider"
+          },
           {
             "type": "actions",
             "elements": [
@@ -318,19 +373,18 @@ def update_home_tab(client, context, logger):
                 },
                 "value": "join_a_project",
                 "action_id": "join_project"
+              },
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Invite a member",
+                  "emoji": True
+                },
+                "value": "add_a_member",
+                "action_id": "add_member"
               }
             ]
-          },
-          {
-            "type": "divider"
-          },
-          {
-            "type": "section",
-            "text": {
-              "type": "plain_text",
-              "text": "You have not created any task yet, Please click on 'Create a task' button and create your first task.",
-              "emoji": True
-            }
           }
         ]
     else:
@@ -357,7 +411,7 @@ def update_home_tab(client, context, logger):
 @app.event("app_home_opened")
 def show_home_tab_conditionaly(client, context, logger):
   if check_token(context) : 
-     print("Amit")
+     #print("Amit")
      update_home_tab(client, context, logger)
   else:
      guest_home_view(client, context, logger, context)
@@ -423,31 +477,49 @@ def create_new_task (ack, logger, body, client):
                 },
                 {
                   "type": "input",
+                  "element": {
+                      "type": "plain_text_input",
+                      "action_id": "input_task_title_action",
+                      "placeholder": {
+                          "type": "plain_text",
+                          "text": "Task title"
+                      }
+                  },
+                  "block_id": "input_task_title",
+                  "label": {
+                      "type": "plain_text",
+                      "text": "Task Title"
+                  }
+                },
+                {
+                  "type": "input",
                   "block_id": "input_task_details",
                   "element": {
-                    "type": "plain_text_input",
+                    "type": "rich_text_input",
                     "action_id": "input_task_details-action"
                   },
                   "label": {
                     "type": "plain_text",
-                    "text": "New task",
+                    "text": "Task Description",
                     "emoji": True
                   }
                 },
                 {
                   "type": "input",
+                  "block_id": "input_date_block",
                   "element": {
-                    "type": "multi_users_select",
+                    "type": "datepicker",
+                    "initial_date": date.today().isoformat(),
                     "placeholder": {
                       "type": "plain_text",
-                      "text": "Select users",
+                      "text": "Select a due date",
                       "emoji": True
                     },
-                    "action_id": "multi_users_select-action"
+                    "action_id": "due_date_selector"
                   },
                   "label": {
                     "type": "plain_text",
-                    "text": "Assign user",
+                    "text": "Due date",
                     "emoji": True
                   }
                 }
@@ -459,30 +531,52 @@ def create_new_task (ack, logger, body, client):
     except Exception as e:
         logger.error("Error creating conversation: {}".format(e))
 
-# Handle a view_submission request
+
 @app.view("create_task_view")
-def handle_submission(ack, body, context, client, view, logger, say:Say):
+def handle_create_task_events(ack, body, context, client, view, logger, say:Say):
     ack()
-    data = view["state"]["values"]
-    new_data = {
-        "assignee": body["user"]["id"],
-        "description": data["input_task_details"]["input_task_details-action"]["value"],
-        "status": "TODO"
-    }
-    #user = body["user"]["id"]
-    request_dat= requests.post('http://127.0.0.1:5000/tasks', json=new_data)
-    #print(user)
-    #print(data)
-    #print(context)
-    # Validate the inputs
-    errors = {}
-    if len(errors) > 0:
-        ack(response_action="errors", errors=errors)
-        return
-    
-    say(channel=context["user_id"], text="Task created successfully")
-    update_home_tab(client, context, logger)
     logger.info(body)
+    data = view["state"]["values"]
+    print(data)
+    new_data = {
+      "id": "12345",
+      "title": data["input_task_title"]["input_task_title_action"]["value"],
+      "description": data["input_task_details"]["input_task_details-action"]["rich_text_value"]["elements"][0]["elements"][0]["text"],
+      "status": "TODO",
+      "dueDate": data["input_date_block"]["due_date_selector"]["selected_date"]
+    }
+    print(new_data)
+    requests.post('http://127.0.0.1:5000/tasks', json=new_data)
+    update_home_tab(client, context, logger)
+
+# # Handle a view_submission request
+# @app.view("create_task_view")
+# def handle_create_task_events(ack, body, context, client, view, logger, say:Say):
+#     ack()
+#     data = view["state"]["values"]
+#     print(data)
+#     new_data = {
+#         "id": "12345",
+#         "title": data["input_task_title"]["input_task_title_action"]["value"],
+#         "description": data["input_task_details"]["input_task_details-action"]["rich_text_value"],
+#         "status": "TODO",
+#         "dueDate": "10/05/2024",
+#         "assigneeUserName": body["user"]["id"]
+#     }
+#     #user = body["user"]["id"]
+    # request_dat= requests.post('http://127.0.0.1:5000/tasks', json=new_data)
+    # #print(user)
+    # #print(data)
+    # #print(context)
+    # # Validate the inputs
+    # errors = {}
+    # if len(errors) > 0:
+    #     ack(response_action="errors", errors=errors)
+    #     return
+    
+    # say(channel=context["user_id"], text="Task created successfully")
+    # update_home_tab(client, context, logger)
+    # logger.info(body)
 
 
 @app.action("actionId-1")
@@ -588,6 +682,286 @@ def update_task(ack, body, logger, payload, say, view, client, context):
     say(channel=body["user"]["id"], text="Task updated successfully")
 
     update_home_tab(client, context, logger)
+
+
+@app.action("create_project")
+def handle_create_project_action(ack, body, logger, client):
+    ack()
+    print("C P Working")
+    try:
+        # Call the views.open method using the WebClient passed to listeners
+        print("Try working")
+        client.views_open(
+          trigger_id=body["trigger_id"],
+          view={
+            "type": "modal",
+            "callback_id": "create_project_channel",
+            "title": {
+              "type": "plain_text",
+              "text": "Create Project",
+              "emoji": True
+            },
+            "submit": {
+              "type": "plain_text",
+              "text": "Submit",
+              "emoji": True
+            },
+            "close": {
+              "type": "plain_text",
+              "text": "Cancel",
+              "emoji": True
+            },
+            "blocks": [
+              {
+                "type": "input",
+                "block_id": "project_name",
+                "element": {
+                  "type": "plain_text_input",
+                  "action_id": "project_name_input-action"
+                },
+                "label": {
+                  "type": "plain_text",
+                  "text": "Project name",
+                  "emoji": True
+                }
+              },
+              {
+                "type": "input",
+                "block_id": "project_description",
+                "element": {
+                  "type": "plain_text_input",
+                  "multiline": True,
+                  "action_id": "project_description_input-action"
+                },
+                "label": {
+                  "type": "plain_text",
+                  "text": "Project description",
+                  "emoji": True
+                }
+              },
+              {
+                "type": "input",
+                "block_id": "select_project_manager_block",
+                "element": {
+                  "type": "multi_users_select",
+                  "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select users",
+                    "emoji": True
+                  },
+                  "action_id": "select_project_manager"
+                },
+                "label": {
+                  "type": "plain_text",
+                  "text": "Select project manager ",
+                  "emoji": True
+                },
+                "hint": {
+                  "type": "plain_text",
+                  "text": "Select 1 project manager",
+                  "emoji": True
+                }
+              },
+              {
+                "type": "input",
+                "block_id": "select_dev_block",
+                "element": {
+                  "type": "multi_users_select",
+                  "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select users",
+                    "emoji": True
+                  },
+                  "action_id": "select_project_dev"
+                },
+                "label": {
+                  "type": "plain_text",
+                  "text": "Select developers",
+                  "emoji": True
+                },
+                "hint": {
+                  "type": "plain_text",
+                  "text": "Select 1 or more developers",
+                  "emoji": True
+                }
+              },
+              {
+                "type": "input",
+                "block_id": "select_qa_block",
+                "element": {
+                  "type": "multi_users_select",
+                  "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select users",
+                    "emoji": True
+                  },
+                  "action_id": "select_project_qa"
+                },
+                "label": {
+                  "type": "plain_text",
+                  "text": "Select QA",
+                  "emoji": True
+                },
+                "hint": {
+                  "type": "plain_text",
+                  "text": "Select 1 or more QA",
+                  "emoji": True
+                }
+              }
+            ]
+          }
+        )
+        logger.info(body)
+    except Exception as e:
+      logger.error("Error creating conversation: {}".format(e))
+
+@app.view("create_project_channel")
+def handle_create_channel_events(ack, body, logger, view, client):
+    ack()
+    logger.info(body)
+    view_data = view["state"]["values"]
+    print(view_data)
+    project_name = view_data['project_name']['project_name_input-action']['value']
+    channel_name = project_name.replace(" ", "-")
+    pm_user = view_data['select_project_manager_block']['select_project_manager']['selected_users']
+    dev_user = view_data['select_dev_block']['select_project_dev']['selected_users']
+    qa_user = view_data['select_qa_block']['select_project_qa']['selected_users']
+    users = []
+    users.extend(pm_user)
+    users.extend(dev_user)
+    users.extend(qa_user)
+
+    print(users)
+
+    #client.conversations_create(name=channel)
+    #client.conversations_invite(channel)
+    channel = client.conversations_create(name=channel_name, is_private=False)
+    #print(channel)
+    #print(channel['channel']['id'])
+    #print(channel['channel']['name'])
+    client.conversations_invite(channel=channel['channel']['id'], users=users)
+    # for user in users:
+    #   user_data = client.users_profile_get(user)
+    #   print('Amit-----------')
+    #   print(user_data)
+
+    # client.chat_postMessage(
+    #     channel=channel['channel']['id'], 
+    #     text=f"Welcome to {users['id']}"
+    # )
+    # print(client)
+
+## Add member functionality
+
+@app.action("add_member")
+def handle_add_member(ack, body, logger, client):
+    ack()
+    logger.info(body)
+    client.views_open(
+      trigger_id=body["trigger_id"],
+      view={
+        "type": "modal",
+        "callback_id": "add_a_member_cb",
+        "title": {
+          "type": "plain_text",
+          "text": "Invite a member",
+          "emoji": True
+        },
+        "submit": {
+          "type": "plain_text",
+          "text": "Invite",
+          "emoji": True
+        },
+        "close": {
+          "type": "plain_text",
+          "text": "Cancel",
+          "emoji": True
+        },
+        "blocks": [
+          {
+            "type": "input",
+            "block_id": "input_user_id",
+            "element": {
+              "type": "plain_text_input",
+              "action_id": "input_user_id-action"
+            },
+            "label": {
+              "type": "plain_text",
+              "text": "User ID",
+              "emoji": True
+            },
+            "hint": {
+              "type": "plain_text",
+              "text": "Enter a user id , Ex - U06UPCWJDAM",
+              "emoji": True
+            }
+          },
+          {
+            "type": "input",
+            "block_id": "select_user_role",
+            "element": {
+              "type": "static_select",
+              "placeholder": {
+                "type": "plain_text",
+                "text": "Select an item",
+                "emoji": True
+              },
+              "options": [
+                {
+                  "text": {
+                    "type": "plain_text",
+                    "text": "PM",
+                    "emoji": True
+                  },
+                  "value": "PM"
+                },
+                {
+                  "text": {
+                    "type": "plain_text",
+                    "text": "DEV",
+                    "emoji": True
+                  },
+                  "value": "DEV"
+                },
+                {
+                  "text": {
+                    "type": "plain_text",
+                    "text": "QA",
+                    "emoji": True
+                  },
+                  "value": "QA"
+                }
+              ],
+              "action_id": "select-role-action"
+            },
+            "label": {
+              "type": "plain_text",
+              "text": "Role",
+              "emoji": True
+            }
+          }
+        ]
+      }
+    )
+
+@app.shortcut("invite_member")
+def invite_member(ack, body, logger, client):
+   handle_add_member(ack, body, logger, client)
+
+@app.view("add_a_member_cb")
+def handle_add_member_events(ack, body, logger, view, context, say):
+    ack()
+    logger.info(body)
+    view_data = view["state"]["values"]
+    password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+    project_joining_code = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+    data = {
+      "username": view_data ["input_user_id"]["input_user_id-action"]["value"],
+      "password": password,
+      "role": view_data ["select_user_role"]["select-role-action"]["selected_option"]["value"]
+    }
+    requests.post('http://127.0.0.1:5000/user/signup', json=data)
+    say(channel=context["user_id"], text=f"New member details : username : {data["username"]} , password : {data["password"]}, Joining Code : {project_joining_code}")
 
 # Ready? Start your app!
 if __name__ == "__main__":
