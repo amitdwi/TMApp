@@ -854,8 +854,12 @@ def handle_create_channel_events(ack, body, logger, view, client):
 ## Add member functionality
 
 @app.action("add_member")
-def handle_add_member(ack, body, logger, client):
+def handle_add_member(ack, body, logger, client, command):
     ack()
+    print("command")
+    print(command)
+    #print(payload)
+    #print(client)
     logger.info(body)
     client.views_open(
       trigger_id=body["trigger_id"],
@@ -867,6 +871,7 @@ def handle_add_member(ack, body, logger, client):
           "text": "Invite a member",
           "emoji": True
         },
+        "private_metadata": command["channel_id"],
         "submit": {
           "type": "plain_text",
           "text": "Invite",
@@ -879,21 +884,20 @@ def handle_add_member(ack, body, logger, client):
         },
         "blocks": [
           {
-            "type": "input",
+            "type": "section",
             "block_id": "input_user_id",
-            "element": {
-              "type": "plain_text_input",
-              "action_id": "input_user_id-action"
+            "text": {
+              "type": "mrkdwn",
+              "text": "Select a user to invite :"
             },
-            "label": {
-              "type": "plain_text",
-              "text": "User ID",
-              "emoji": True
-            },
-            "hint": {
-              "type": "plain_text",
-              "text": "Enter a user id , Ex - U06UPCWJDAM",
-              "emoji": True
+            "accessory": {
+              "type": "users_select",
+              "placeholder": {
+                "type": "plain_text",
+                "text": "Select a user",
+                "emoji": True
+              },
+              "action_id": "input_user_id-action",
             }
           },
           {
@@ -944,24 +948,88 @@ def handle_add_member(ack, body, logger, client):
       }
     )
 
-@app.shortcut("invite_member")
-def invite_member(ack, body, logger, client):
-   handle_add_member(ack, body, logger, client)
+@app.command("/invite_member")
+def invite_member(ack, body, logger, client, command):
+   handle_add_member(ack, body, logger, client, command)
 
 @app.view("add_a_member_cb")
-def handle_add_member_events(ack, body, logger, view, context, say):
+def handle_add_member_events(ack, body, logger, view, context, say, client):
     ack()
     logger.info(body)
     view_data = view["state"]["values"]
+    print(view_data)
     password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
     project_joining_code = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
     data = {
-      "username": view_data ["input_user_id"]["input_user_id-action"]["value"],
+      "username": view_data ["input_user_id"]["input_user_id-action"]["selected_user"],
       "password": password,
       "role": view_data ["select_user_role"]["select-role-action"]["selected_option"]["value"]
     }
     requests.post('http://127.0.0.1:5000/user/signup', json=data)
-    say(channel=context["user_id"], text=f"New member details : username : {data["username"]} , password : {data["password"]}, Joining Code : {project_joining_code}")
+    print("-------q--------")
+    print(context)
+    #say(channel=context["user_id"], text=f"New member details : username : {data["username"]} , password : {data["password"]}, Joining Code : {project_joining_code}")
+    client.chat_postEphemeral(
+      channel = view["private_metadata"],
+      user = context["user_id"],
+      text = f"New member details : username : {data["username"]} , password : {data["password"]}, Joining Code : {project_joining_code}"
+    )
+@app.action("join_project")
+def handle_some_action(ack, body, logger, client):
+    ack()
+    logger.info(body)
+    client.views_open(
+      trigger_id=body["trigger_id"],
+      view={
+        "type": "modal",
+        "callback_id": "handle_join_project",
+        "title": {
+          "type": "plain_text",
+          "text": "Join a project",
+          "emoji": True
+        },
+        "submit": {
+          "type": "plain_text",
+          "text": "Join project",
+          "emoji": True
+        },
+        "close": {
+          "type": "plain_text",
+          "text": "Cancel",
+          "emoji": True
+        },
+        "blocks": [
+          {
+            "type": "input",
+            "block_id": "project_code_block",
+            "element": {
+              "type": "plain_text_input",
+              "action_id": "project_code_block-action"
+            },
+            "label": {
+              "type": "plain_text",
+              "text": "Project code :",
+              "emoji": True
+            },
+            "hint": {
+              "type": "plain_text",
+              "text": "Enter a 8 digit project code, Ex - dUuGjbK2",
+              "emoji": True
+            }
+          }
+        ]
+      }
+    )
+
+@app.view("handle_join_project")
+def handle_view_submission_events(ack, body, logger, view, client, context):
+    ack()
+    logger.info(body)
+    view_data = view["state"]["values"]
+    print(view_data)
+    user = context["user_id"]
+    #client.conversations_invite(channel=channel['channel']['id'], users=users)
+
 
 # Ready? Start your app!
 if __name__ == "__main__":
